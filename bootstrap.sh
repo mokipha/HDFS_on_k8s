@@ -2,15 +2,9 @@
 
 ##########
 # Identifying role
-# Applicable roles are 'master', 'worker', 'pseudo'
-# Default vaule is 'pseudo'
+# Applicable roles are 'master', 'worker'
 
-if [ -z "${1}" ]
-then
-	role='pseudo'
-else
-	role="${1}"
-fi
+role="${1}"
 
 ##########
 # Setting JAVA_HOME
@@ -184,20 +178,13 @@ update_authorized_keys() {
 	fi
 }
 
-if [ -f /var/run/secrets/kubernetes.io/serviceaccount/token ];
+if [ "${role}" == "master" ];
 then
-	environment="kubernetes"
-	if [ "${role}" == "master" ];
-	then
-		update_authorized_keys
-		pull_workers
-	elif [ "${role}" == "worker" ];
-	then
-		pull_authorized_keys
-	fi
-else
-	echo "Kubernetes service token is missing"
-	echo "Could not connect to Kubernetes"
+    update_authorized_keys
+    pull_workers
+elif [ "${role}" == "worker" ];
+then
+    pull_authorized_keys
 fi
 
 ##########
@@ -432,9 +419,6 @@ then
 	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.hostname hadoop-worker
 	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.resourcemanager.scheduler.address ${resource_tracker_addr}:8030
 	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.bind-host ${resource_tracker_addr}
-	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.hostname worker-0
-	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.hostname worker-1
-	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.hostname worker-2
 else
 	addProperty ${HADOOP_HOME}/etc/hadoop/yarn-site.xml yarn.nodemanager.address 0.0.0.0:8034
 fi	
@@ -502,13 +486,10 @@ fi
 
 while true; 
 do 
-	if [ "${environment}" == "kubernetes" ];
-	then
-		pull_authorized_keys
-		if [ "${role}" == "master" ];
-        	then
-                	pull_workers
-        	fi
-	fi
+    pull_authorized_keys
+    if [ "${role}" == "master" ];
+    then
+            pull_workers
+    fi
 	sleep 1000; 
 done

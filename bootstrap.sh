@@ -1,22 +1,11 @@
 #!/bin/bash
 
-##########
-# Identifying role
-# Applicable roles are 'master', 'worker'
+# role 지정
+# namenode -> 'master'
+# datanode -> 'worker'
 
 role="${1}"
 
-##########
-# Setting JAVA_HOME
-
-if [ -z "${JAVA_HOME}" ];
-then
-	echo "JAVA_HOME is not set. Exiting..."
-	exit 1
-fi
-
-##########
-# Setting up Java and Hadoop profile
 
 echo "
 export JAVA_HOME=${JAVA_HOME}
@@ -26,8 +15,7 @@ export CLASSPATH=$(${HADOOP_HOME}/bin/hadoop classpath)
 
 sed -i "s|^#\? \?export JAVA_HOME.*|export JAVA_HOME=${JAVA_HOME}|g" ${HADOOP_HOME}/etc/hadoop/hadoop-env.sh
 
-##########
-# Resource allocation
+# 리소스 할당
 
 if [ -z "${MAX_CPU_PERC}" ];
 then
@@ -64,8 +52,7 @@ then
 	BLOCK_SIZE=268435456
 fi
 
-##########
-# Setting up SSH keys
+# SSH keys 세팅
 
 [ ! -f /etc/ssh/ssh_host_dsa_key ] && ssh-keygen -q -N "" -t dsa -f /etc/ssh/ssh_host_dsa_key
 [ ! -f /etc/ssh/ssh_host_rsa_key ] && ssh-keygen -q -N "" -t rsa -f /etc/ssh/ssh_host_rsa_key
@@ -78,16 +65,12 @@ then
 	cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
 fi
 
-##########
-# Store the public key of master in Kubernetes secret store
-
-# If this container is running inside Kubernetes, then create a Kubernetes secret
-# for authorized keys, so that hadoop worker nodes can pull the public key(s) of
-# of the hadoop masters and allow them to access the worker pods through SSH.
+# namenode의 worker config 설정
+# kubernetes의 동일 namespace svc에 worker가 들어가면 등록
 
 pull_workers() {
 	KUBE_TOKEN=$(</var/run/secrets/kubernetes.io/serviceaccount/token)
-        NAMESPACE=$(</var/run/secrets/kubernetes.io/serviceaccount/namespace)
+    NAMESPACE=$(</var/run/secrets/kubernetes.io/serviceaccount/namespace)
 	
 	curl -s \
 	  --cacert /run/secrets/kubernetes.io/serviceaccount/ca.crt \
@@ -99,11 +82,13 @@ https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_PORT_443_TCP_PORT/api/v1/namespaces
 
 }
 
+# namenode의 public key를 kubernetes secret으로 저장
+
 pull_authorized_keys() {
-        KUBE_TOKEN=$(</var/run/secrets/kubernetes.io/serviceaccount/token)
-        NAMESPACE=$(</var/run/secrets/kubernetes.io/serviceaccount/namespace)
-        SECRET_NAME="authorized-keys"
-        PUBLIC_KEY=$(cat /root/.ssh/id_rsa.pub)
+    KUBE_TOKEN=$(</var/run/secrets/kubernetes.io/serviceaccount/token)
+    NAMESPACE=$(</var/run/secrets/kubernetes.io/serviceaccount/namespace)
+    SECRET_NAME="authorized-keys"
+    PUBLIC_KEY=$(cat /root/.ssh/id_rsa.pub)
 
 	response=$(curl -s \
 	  --cacert /run/secrets/kubernetes.io/serviceaccount/ca.crt \
@@ -187,8 +172,9 @@ then
     pull_authorized_keys
 fi
 
-##########
-# Setup SSH client configurations
+
+# SSH client 세팅
+
 echo "
 Host *
   UserKnownHostsFile /dev/null
@@ -199,19 +185,19 @@ LogLevel quiet
 chmod 600 /root/.ssh/config
 chown root:root /root/.ssh/config
 
-##########
-# Setup SSH server configurations
+
+# SSH server 세팅
+# root 로그인 허용
 
 sed -i 's/#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
 
-# Create /run/sshd directory to avoid sshd service issues in ubuntu containers.
 mkdir /run/sshd
 /usr/sbin/sshd -D & disown
 
-##########
-# Create data directories for Hadoop
+# Hadoop 디렉토리 생성
 mkdir -p /hdfs/data/dfs/dn
 mkdir -p /hdfs/namenode/dfs/nn
+
 
 if [ "${role}" == "worker" ];
 then
@@ -223,8 +209,7 @@ else
 	resource_tracker_addr="hadoop-master"
 fi
 
-##########
-# Addproperty function
+# 설정추가 함수
 function addProperty() {
 	local path=$1
 	local name=$2
@@ -235,8 +220,7 @@ function addProperty() {
 	sed -i "/<\/configuration>/ s/.*/${escapedEntry}\n&/" $path
 }
 
-##########
-# Create Hadoop configuration files
+# Hadoop 설정시작
 
 echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>

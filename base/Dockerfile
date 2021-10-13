@@ -5,10 +5,13 @@ FROM ubuntu:18.04
 
 ARG HADOOP_VERSION=3.3.1
 
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Seoul
+
 USER root
 
 RUN apt-get -y update
-RUN apt-get install -y curl tar sudo openssh-server rsync hostname net-tools findutils less lsof vim bc jq
+RUN apt-get install -y curl tar sudo openssh-server rsync hostname net-tools findutils less lsof vim bc jq tzdata
 
 RUN apt-get install -y openjdk-8-jdk netcat gnupg libsnappy-dev && rm -rf /var/lib/apt/lists/*
 RUN mkdir /tmp/hadoop && \

@@ -436,7 +436,7 @@ echo "
 " > ${HADOOP_CONF_DIR}/fair-scheduler.xml
 
 ##########
-# Start Hadoop services
+# 하둡 서비스 시작
 
 if [ "${role}" == "master" ];
 then
@@ -449,7 +449,7 @@ then
 
 	${HADOOP_HOME}/sbin/hadoop-daemon.sh start namenode
 	${HADOOP_HOME}/sbin/hadoop-daemon.sh start secondarynamenode
-        ${HADOOP_HOME}/sbin/yarn-daemon.sh start resourcemanager
+    ${HADOOP_HOME}/sbin/yarn-daemon.sh start resourcemanager
 	${HADOOP_HOME}/sbin/mr-jobhistory-daemon.sh start historyserver
 
 	if [[ "${namenode_formated}" == "true" ]];
